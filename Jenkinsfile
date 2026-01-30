@@ -19,7 +19,18 @@ pipeline {
                 }
             }
         }
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    // Update the image in the deployment to the new build
+                    sh """
+                    kubectl set image deployment/netdash-deployment netdash-container=jeffreyzammit/netdash:${env.BUILD_ID} --record
+                    """
+                }
+            }
+        }
     }
+ 
     post {
         always {
             cleanWs()
