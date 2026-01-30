@@ -19,13 +19,29 @@ pipeline {
                 }
             }
         }
+        stage('Kube Debug') {
+            steps {
+                sh '''
+                set -e
+                which kubectl
+                kubectl version --client=true
+                echo "KUBECONFIG=$KUBECONFIG"
+                kubectl config current-context || true
+                kubectl config view --minify || true
+                kubectl cluster-info || true
+                kubectl get ns || true
+                '''
+            }
+            }
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    // Update the image in the deployment to the new build
-                    sh """
-                    kubectl set image deployment/netdash-deployment netdash-container=jeffreyzammit/netdash:${env.BUILD_ID} --record
-                    """
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                sh """
+                    set -e
+                    kubectl get ns
+                    kubectl set image deployment/netdash-deployment netdash-container=jeffreyzammit/netdash:${env.BUILD_NUMBER}
+                    kubectl rollout status deployment/netdash-deployment --timeout=180s
+                """
                 }
             }
         }
