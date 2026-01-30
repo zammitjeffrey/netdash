@@ -1,12 +1,21 @@
 pipeline {
     agent any
-
+    
     stages {
-        stage('Build Docker Image') {
+        stage('Build & Push Docker Image') {
             steps {
                 script {
-                    // Build the image and tag it with the Jenkins Build ID
-                    docker.build("netdash:${env.BUILD_ID}")
+                    docker.withRegistry('', 'docker-hub-creds') {
+                        // 1. Build the image
+                        // We name it 'username/repo:build-number'
+                        def app = docker.build("jeffreyzammitME/netdash:${env.BUILD_ID}")
+                        
+                        // 2. Push the image with the specific build number
+                        app.push()
+                        
+                        // 3. Also push it as 'latest' so it's easy to find
+                        app.push("latest")
+                    }
                 }
             }
         }
