@@ -30,7 +30,7 @@ pipeline {
         stage('Kube Debug (before deploy)') {
             steps {
                 // Bind the *remote* kubeconfig so kubectl has a context
-                withCredentials([file(credentialsId: 'vm-kubeconfig', variable: 'KUBECONFIG')]) {
+                withCredentials([file(credentialsId: 'microk8s', variable: 'KUBECONFIG')]) {
                 sh '''
                     set -euxo pipefail
                     which kubectl
