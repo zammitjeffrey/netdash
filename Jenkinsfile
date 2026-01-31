@@ -1,6 +1,13 @@
 pipeline {
     agent any
     
+    
+    environment {
+        // Use one build number variable consistently for image tagging
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        IMAGE_REPO = "jeffreyzammit/netdash"
+    }
+
     stages {
         stage('Build & Push Docker Image') {
             steps {
@@ -19,20 +26,29 @@ pipeline {
                 }
             }
         }
-        stage('Kube Debug') {
+        
+        stage('Kube Debug (before deploy)') {
             steps {
+                // Bind the *remote* kubeconfig so kubectl has a context
+                withCredentials([file(credentialsId: 'vm-kubeconfig', variable: 'KUBECONFIG')]) {
                 sh '''
-                set -e
-                which kubectl
-                kubectl version --client=true
-                echo "KUBECONFIG=$KUBECONFIG"
-                kubectl config current-context || true
-                kubectl config view --minify || true
-                kubectl cluster-info || true
-                kubectl get ns || true
+                    set -euxo pipefail
+                    which kubectl
+                    kubectl version --client=true
+                    echo "Using KUBECONFIG=${KUBECONFIG}"
+                    echo "== contexts =="
+                    kubectl config get-contexts || true
+                    echo "== current context =="
+                    kubectl config current-context || true
+                    echo "== cluster-info =="
+                    kubectl cluster-info || true
+                    echo "== namespaces =="
+                    kubectl get ns || true
                 '''
+                }
             }
             }
+
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
