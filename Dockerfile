@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code
 COPY app.py .
+COPY test_app.py .
 
 # The command to start the app
 CMD ["python", "app.py"]
