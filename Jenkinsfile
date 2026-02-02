@@ -1,9 +1,7 @@
 pipeline {
     agent any
     
-    
     environment {
-        // Use one build number variable consistently for image tagging
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         IMAGE_REPO = "jeffreyzammit/netdash"
     }
@@ -13,14 +11,8 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('', 'docker-hub-creds') {
-                        // 1. Build the image
-                        // We name it 'username/repo:build-number'
-                        def app = docker.build("jeffreyzammit/netdash:${env.BUILD_ID}")
-                        
-                        // 2. Push the image with the specific build number
+                        def app = docker.build("${IMAGE_REPO}:${IMAGE_TAG}")
                         app.push()
-                        
-                        // 3. Also push it as 'latest' so it's easy to find
                         app.push("latest")
                     }
                 }
@@ -29,34 +21,29 @@ pipeline {
         
         stage('Kube Debug (before deploy)') {
             steps {
-                // Bind the *remote* kubeconfig so kubectl has a context
                 withCredentials([file(credentialsId: 'microk8s', variable: 'KUBECONFIG')]) {
-                sh '''
+                // We add the shebang line to force using BASH
+                sh """#!/bin/bash
                     set -euxo pipefail
-                    which kubectl
+                    chmod 600 \${KUBECONFIG}
                     kubectl version --client=true
-                    echo "Using KUBECONFIG=${KUBECONFIG}"
-                    echo "== contexts =="
-                    kubectl config get-contexts || true
-                    echo "== current context =="
-                    kubectl config current-context || true
-                    echo "== cluster-info =="
-                    kubectl cluster-info || true
-                    echo "== namespaces =="
-                    kubectl get ns || true
-                '''
+                    echo "Testing connection to MicroK8s..."
+                    kubectl get nodes
+                """
                 }
             }
-            }
+        }
 
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                sh """
+                withCredentials([file(credentialsId: 'microk8s', variable: 'KUBECONFIG')]) {
+                sh """#!/bin/bash
                     set -e
-                    kubectl get ns
-                    kubectl set image deployment/netdash-deployment netdash-container=jeffreyzammit/netdash:${env.BUILD_NUMBER}
-                    kubectl rollout status deployment/netdash-deployment --timeout=180s
+                    # chmod 600 \${KUBECONFIG}
+                    kubectl set image deployment/netdash netdash=jeffreyzammit/netdash:${IMAGE_TAG}
+                    
+                    # 2. Wait for the rollout to finish
+                    kubectl rollout status deployment/netdash --timeout=180s
                 """
                 }
             }
