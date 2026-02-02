@@ -17,7 +17,7 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="card">
-        <h1>🌐 NetDash Network Info</h1>
+        <h1>🌐 NetDash Network Info Portal</h1>
         <p>Your Private IP Address: <strong>{{ user_ip }}</strong></p>
         <p>Your Public IP Address: <strong>{{ public_ip }}</strong></p>
         <p>Server Hostname: <strong>{{ hostname }}</strong></p>
