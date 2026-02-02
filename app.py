@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template_string
 import socket
 import subprocess
+import requests
 
 app = Flask(__name__)
 
@@ -31,7 +32,12 @@ HTML_TEMPLATE = """
 def home():
     user_ip = request.remote_addr
     hostname = socket.gethostname()
-    public_ip = subprocess.check_output(['curl', 'http://icanhazip.com']).decode().strip()
+    try:
+        public_ip = requests.get('http://icanhazip.com', timeout=5).text.strip()
+    except Exception as e:
+        public_ip = f"Unavailable ({str(e)})"
+
     return render_template_string(HTML_TEMPLATE, user_ip=user_ip, hostname=hostname, public_ip=public_ip)
+    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
